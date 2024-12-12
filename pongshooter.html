@@ -1,0 +1,189 @@
+<!D<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strzelający Pong</title>
+    <style>
+        canvas {
+            background: #000;
+            display: block;
+            margin: 0 auto;
+        }
+        body {
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+    <h1>Strzelający Pong</h1>
+    <p>Gracz 1: W, S, A, D - Ruch, Spacja - Strzał w prawo, Shift - Strzał w lewo<br>
+       Gracz 2: Strzałki - Ruch, Enter - Strzał w prawo, Backspace - Strzał w lewo</p>
+    <p>Tryb losowy: Naciśnij R, aby rozpocząć</p>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+ 
+        // Rozmiary
+        const playerWidth = 10, playerHeight = 70;
+        const bulletWidth = 5, bulletHeight = 5;
+        const speed = 4, bulletSpeed = 6;
+ 
+        // Gracze
+        const player1 = { x: 20, y: canvas.height / 2 - playerHeight / 2, score: 0 };
+        const player2 = { x: canvas.width - 20 - playerWidth, y: canvas.height / 2 - playerHeight / 2, score: 0 };
+ 
+        const bullets = [];
+ 
+        const keys = {};
+ 
+        // Losowo
+        let randomMode = false;
+ 
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === 'r' || e.key === 'R') {
+                randomMode = !randomMode;
+                if (randomMode) randomShoot();
+            }
+        });
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+ 
+      
+        function drawPlayer(player) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x, player.y, playerWidth, playerHeight);
+        }
+ 
+        // Rysowanie pocisków
+        function drawBullets() {
+            ctx.fillStyle = 'red';
+            bullets.forEach((bullet) => {
+                ctx.fillRect(bullet.x, bullet.y, bulletWidth, bulletHeight);
+            });
+        }
+ 
+      
+        function movePlayers() {
+            // Gracz 1
+            if (keys['w'] && player1.y > 0) player1.y -= speed;
+            if (keys['s'] && player1.y < canvas.height - playerHeight) player1.y += speed;
+            if (keys['a'] && player1.x > 0) player1.x -= speed;
+            if (keys['d'] && player1.x < canvas.width / 2 - playerWidth) player1.x += speed;
+ 
+            // Gracz 2
+            if (keys['ArrowUp'] && player2.y > 0) player2.y -= speed;
+            if (keys['ArrowDown'] && player2.y < canvas.height - playerHeight) player2.y += speed;
+            if (keys['ArrowLeft'] && player2.x > canvas.width / 2) player2.x -= speed;
+            if (keys['ArrowRight'] && player2.x < canvas.width - playerWidth) player2.x += speed;
+        }
+ 
+        // Dodanie pocisków
+        function shootBullets() {
+            if (keys[' '] && bullets.filter(b => b.player === 1).length < 1) {
+                bullets.push({ x: player1.x + playerWidth, y: player1.y + playerHeight / 2, dx: bulletSpeed, player: 1 });
+            }
+            if (keys['Shift'] && bullets.filter(b => b.player === 1).length < 1) {
+                bullets.push({ x: player1.x, y: player1.y + playerHeight / 2, dx: -bulletSpeed, player: 1 });
+            }
+            if (keys['Enter'] && bullets.filter(b => b.player === 2).length < 1) {
+                bullets.push({ x: player2.x - bulletWidth, y: player2.y + playerHeight / 2, dx: -bulletSpeed, player: 2 });
+            }
+            if (keys['Backspace'] && bullets.filter(b => b.player === 2).length < 1) {
+                bullets.push({ x: player2.x, y: player2.y + playerHeight / 2, dx: bulletSpeed, player: 2 });
+            }
+        }
+ 
+        // Poruszanie pocisków
+        function moveBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.dx;
+ 
+                // Kolizja 
+                if (
+                    bullet.player === 1 &&
+                    bullet.x > player2.x &&
+                    bullet.y > player2.y &&
+                    bullet.y < player2.y + playerHeight
+                ) {
+                    bullets.splice(index, 1);
+                    player1.score++;
+                    resetPlayers();
+                } else if (
+                    bullet.player === 2 &&
+                    bullet.x < player1.x + playerWidth &&
+                    bullet.y > player1.y &&
+                    bullet.y < player1.y + playerHeight
+                ) {
+                    bullets.splice(index, 1);
+                    player2.score++;
+                    resetPlayers();
+                }
+ 
+                // Usunięcie pocisku
+                if (bullet.x < 0 || bullet.x > canvas.width) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+ 
+        // Resetowanie graczy na osi X
+        function resetPlayers() {
+            // Gracz 1 
+            player1.x = Math.random() < 0.5 ? 20 : canvas.width / 4 - playerWidth;
+            player1.y = canvas.height / 2 - playerHeight / 2;
+
+            // Gracz 2 
+            player2.x = Math.random() < 0.5 ? canvas.width - 20 - playerWidth : (canvas.width * 3 / 4) - playerWidth;
+            player2.y = canvas.height / 2 - playerHeight / 2;
+
+            bullets.length = 0; 
+        }
+ 
+        // Losowe strzelanie
+        function randomShoot() {
+            if (!randomMode) return;
+ 
+            const randomPlayer = Math.random() < 0.5 ? player1 : player2;
+            const numBullets = Math.floor(Math.random() * 10) + 1;
+            for (let i = 0; i < numBullets; i++) {
+                const direction = Math.random() < 0.5 ? -1 : 1;
+                bullets.push({
+                    x: randomPlayer.x + (direction > 0 ? playerWidth : -bulletWidth),
+                    y: randomPlayer.y + Math.random() * playerHeight,
+                    dx: bulletSpeed * direction,
+                    player: randomPlayer === player1 ? 1 : 2
+                });
+            }
+ 
+            setTimeout(randomShoot, 1000);
+        }
+ 
+        // Wynik
+        function drawScore() {
+            ctx.font = '20px Arial';
+            ctx.fillText(`Gracz 1: ${player1.score}`, 50, 30);
+            ctx.fillText(`Gracz 2: ${player2.score}`, canvas.width - 150, 30);
+        }
+ 
+        // Pętla gry
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer(player1);
+            drawPlayer(player2);
+            drawBullets();
+            drawScore();
+            movePlayers();
+            shootBullets();
+            moveBullets();
+            requestAnimationFrame(gameLoop);
+        }
+ 
+        gameLoop();
+    </script>
+</body>
+</html>
